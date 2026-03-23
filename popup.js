@@ -58,6 +58,25 @@ function showChapterMode() {
 }
 
 // ── Mode simple ─────────────────────────────────────────────────
+function makeFieldEditable(el, storageKey) {
+  el.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+    if (e.key === 'Escape') { el.blur(); }
+  });
+  el.addEventListener('blur', () => {
+    const val = el.textContent.trim();
+    if (!val) { return; }
+    chrome.storage.local.get('scrapingConfig', (data) => {
+      if (!data.scrapingConfig) { return; }
+      data.scrapingConfig[storageKey] = val;
+      chrome.storage.local.set({ scrapingConfig: data.scrapingConfig });
+    });
+  });
+}
+
+makeFieldEditable(fieldPage, 'page');
+makeFieldEditable(fieldPath, 'path');
+
 function showConfig(config) {
   fieldPage.textContent = config.page;
   fieldPage.title       = config.page;
@@ -137,6 +156,39 @@ function renderChapterList() {
       </div>
       <button class="chapter-del" title="Supprimer">×</button>
     `;
+
+    // Édition inline url / path
+    const urlEl  = item.querySelector('.chapter-url');
+    const pathEl = item.querySelector('.chapter-path');
+
+    [urlEl, pathEl].forEach((el) => {
+      el.contentEditable = 'true';
+      el.spellcheck = false;
+
+      // Enter confirme, Escape annule
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+        if (e.key === 'Escape') {
+          el.textContent = el === urlEl ? chapters[idx].page : chapters[idx].path;
+          el.blur();
+        }
+      });
+
+      el.addEventListener('blur', () => {
+        const val = el.textContent.trim();
+        if (!val) {
+          // Restaure la valeur précédente si vide
+          el.textContent = el === urlEl ? chapters[idx].page : chapters[idx].path;
+          return;
+        }
+        if (el === urlEl) { chapters[idx].page = val; }
+        else              { chapters[idx].path = val; }
+        saveChapterState();
+      });
+
+      // Empêche le drag de se déclencher quand on édite
+      el.addEventListener('mousedown', (e) => e.stopPropagation());
+    });
 
     // Drag & drop
     item.addEventListener('dragstart', (e) => {

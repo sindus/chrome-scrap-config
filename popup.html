@@ -90,8 +90,14 @@
       padding: 7px 10px; font-size: 11px; color: #333; word-break: break-all;
       line-height: 1.5; margin-bottom: 10px;
       font-family: 'SFMono-Regular', Consolas, monospace;
+      cursor: text; outline: none;
     }
     .field.page-url { color: #1a73e8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; word-break: normal; }
+    .field[contenteditable]:focus {
+      border-color: #1a73e8; background: #fff;
+      white-space: normal; overflow: visible; text-overflow: unset;
+      box-shadow: 0 0 0 2px rgba(26,115,232,0.15);
+    }
 
     .row { display: flex; gap: 8px; }
     .row button { flex: 1; }
@@ -171,11 +177,19 @@
     .chapter-url {
       font-size: 11px; color: #1a73e8; white-space: nowrap;
       overflow: hidden; text-overflow: ellipsis; font-family: monospace;
+      cursor: text; outline: none; border-radius: 3px;
     }
     .chapter-path {
       font-size: 10px; color: #888; white-space: nowrap;
       overflow: hidden; text-overflow: ellipsis; font-family: monospace;
-      margin-top: 1px;
+      margin-top: 1px; cursor: text; outline: none; border-radius: 3px;
+    }
+    .chapter-url[contenteditable]:focus,
+    .chapter-path[contenteditable]:focus {
+      background: #f0f4ff; white-space: normal;
+      overflow: visible; text-overflow: unset;
+      box-shadow: 0 0 0 2px rgba(92,107,192,0.25);
+      padding: 1px 3px; margin: -1px -3px;
     }
 
     .chapter-del {
@@ -209,9 +223,9 @@
       <div id="result-section" style="display:none">
         <hr class="divider">
         <div class="label">Page</div>
-        <div class="field page-url" id="field-page"></div>
+        <div class="field page-url" id="field-page" contenteditable="true" spellcheck="false"></div>
         <div class="label">Sélecteur CSS</div>
-        <div class="field" id="field-path"></div>
+        <div class="field" id="field-path" contenteditable="true" spellcheck="false"></div>
         <div class="row">
           <button id="btnDownload" class="btn-green">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
