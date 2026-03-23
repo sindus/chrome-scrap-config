@@ -1,0 +1,22 @@
+{
+  "name": "chrome-scrap-config",
+  "version": "1.0.0",
+  "description": "Chrome extension to visually build JSON scraping configurations",
+  "private": true,
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "jest --testPathPattern='tests/(unit|integration)'",
+    "test:unit": "jest --testPathPattern='tests/unit'",
+    "test:integration": "jest --testPathPattern='tests/integration'",
+    "test:e2e": "playwright test",
+    "test:all": "npm test && npm run test:e2e",
+    "icons": "echo 'No icon generation script. Place PNG files in icons/ manually.'"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "eslint": "^9.23.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
+  }
+}

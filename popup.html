@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Scraping Config Builder</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 320px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 13px;
+      color: #1a1a1a;
+      background: #fff;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid #ebebeb;
+    }
+
+    .header h2 {
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #e53935; flex-shrink: 0; }
+    .dot.chapter { background: #7b1fa2; }
+
+    .badge {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 2px 7px;
+      border-radius: 99px;
+      background: #f3e5f5;
+      color: #7b1fa2;
+    }
+
+    /* ── Body ── */
+    .body { padding: 14px 16px; }
+
+    /* ── Buttons ── */
+    button {
+      width: 100%;
+      padding: 9px 14px;
+      border: none;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      transition: background 0.12s;
+    }
+
+    .btn-blue   { background: #1a73e8; color: #fff; }
+    .btn-blue:hover   { background: #1557b0; }
+    .btn-purple { background: #7b1fa2; color: #fff; }
+    .btn-purple:hover { background: #6a1b9a; }
+    .btn-green  { background: #1e8e3e; color: #fff; }
+    .btn-green:hover  { background: #166e30; }
+    .btn-ghost  { background: #f1f1f1; color: #555; }
+    .btn-ghost:hover  { background: #e4e4e4; }
+    .btn-ghost-danger { background: #fce8e6; color: #c62828; }
+    .btn-ghost-danger:hover { background: #f5c6c2; }
+
+    button + button { margin-top: 8px; }
+    button:disabled { opacity: 0.45; cursor: default; }
+
+    /* ── Mode simple : result ── */
+    .status-idle { font-size: 12px; color: #999; text-align: center; margin-top: 10px; }
+    .divider { border: none; border-top: 1px solid #ebebeb; margin: 12px 0; }
+    .label {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.5px; color: #888; margin-bottom: 4px;
+    }
+    .field {
+      background: #f7f7f7; border: 1px solid #e8e8e8; border-radius: 6px;
+      padding: 7px 10px; font-size: 11px; color: #333; word-break: break-all;
+      line-height: 1.5; margin-bottom: 10px;
+      font-family: 'SFMono-Regular', Consolas, monospace;
+    }
+    .field.page-url { color: #1a73e8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; word-break: normal; }
+
+    .row { display: flex; gap: 8px; }
+    .row button { flex: 1; }
+    .btn-icon { flex: 0 0 auto !important; width: auto !important; padding: 9px 12px !important; }
+
+    /* ── Mode chapitrage ── */
+    #mode-chapter { display: none; }
+
+    .chapter-count {
+      font-size: 12px; color: #888; margin-top: 10px; margin-bottom: 6px;
+      text-align: center;
+    }
+
+    /* Pending : sélection non encore ajoutée */
+    #pending-section {
+      background: #e8f5e9; border: 1px solid #a5d6a7; border-radius: 8px;
+      padding: 10px 12px; margin-bottom: 10px; display: none;
+    }
+    #pending-section .pending-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; color: #2e7d32; margin-bottom: 6px;
+    }
+    #pending-section .pending-url {
+      font-size: 11px; color: #1565c0; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis; font-family: monospace;
+    }
+    #pending-section .pending-path {
+      font-size: 11px; color: #333; word-break: break-all;
+      font-family: monospace; margin-top: 3px;
+    }
+    #pending-section .pending-actions {
+      display: flex; gap: 6px; margin-top: 8px;
+    }
+    #pending-section .pending-actions button {
+      font-size: 11px; padding: 5px 10px;
+    }
+
+    /* Liste des chapitres */
+    #chapter-list {
+      max-height: 220px;
+      overflow-y: auto;
+      margin-bottom: 10px;
+      border: 1px solid #ebebeb;
+      border-radius: 8px;
+      display: none;
+    }
+
+    #chapter-list.has-items { display: block; }
+
+    .chapter-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: grab;
+      background: #fff;
+      transition: background 0.1s;
+      user-select: none;
+    }
+    .chapter-item:last-child { border-bottom: none; }
+    .chapter-item:hover { background: #fafafa; }
+    .chapter-item.drag-over { background: #e8eaf6; border-top: 2px solid #5c6bc0; }
+    .chapter-item.dragging { opacity: 0.4; }
+
+    .chapter-handle {
+      color: #bbb; font-size: 14px; flex-shrink: 0; cursor: grab;
+    }
+
+    .chapter-num {
+      flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%;
+      background: #7b1fa2; color: #fff; font-size: 10px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .chapter-info { flex: 1; min-width: 0; }
+    .chapter-url {
+      font-size: 11px; color: #1a73e8; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis; font-family: monospace;
+    }
+    .chapter-path {
+      font-size: 10px; color: #888; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis; font-family: monospace;
+      margin-top: 1px;
+    }
+
+    .chapter-del {
+      flex-shrink: 0; width: 20px !important; height: 20px; padding: 0 !important;
+      border-radius: 50%; background: transparent; color: #bbb;
+      font-size: 15px; line-height: 1; border: none;
+    }
+    .chapter-del:hover { background: #fce8e6; color: #c62828; }
+  </style>
+</head>
+<body>
+
+  <!-- ── Mode simple ── -->
+  <div id="mode-simple">
+    <div class="header">
+      <h2><span class="dot"></span> Scraping Config</h2>
+    </div>
+    <div class="body">
+      <button id="btnSelect" class="btn-blue">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+        Sélectionner un élément
+      </button>
+
+      <button id="btnEnterChapter" class="btn-ghost" style="margin-top:8px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+        Mode chapitrage
+      </button>
+
+      <div id="status-idle" class="status-idle">Aucune sélection enregistrée</div>
+
+      <div id="result-section" style="display:none">
+        <hr class="divider">
+        <div class="label">Page</div>
+        <div class="field page-url" id="field-page"></div>
+        <div class="label">Sélecteur CSS</div>
+        <div class="field" id="field-path"></div>
+        <div class="row">
+          <button id="btnDownload" class="btn-green">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            Télécharger JSON
+          </button>
+          <button id="btnClear" class="btn-icon btn-ghost" title="Effacer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Mode chapitrage ── -->
+  <div id="mode-chapter">
+    <div class="header">
+      <h2><span class="dot chapter"></span> Chapitrage</h2>
+      <span class="badge" id="chapter-badge">0 page</span>
+    </div>
+    <div class="body">
+      <button id="btnSelectChapter" class="btn-purple">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+        Sélectionner sur cette page
+      </button>
+
+      <!-- Sélection en attente d'ajout -->
+      <div id="pending-section">
+        <div class="pending-label">Sélection prête à ajouter</div>
+        <div class="pending-url" id="pending-url"></div>
+        <div class="pending-path" id="pending-path"></div>
+        <div class="pending-actions">
+          <button id="btnAddChapter" class="btn-purple">+ Ajouter à la liste</button>
+          <button id="btnDiscardPending" class="btn-ghost">Ignorer</button>
+        </div>
+      </div>
+
+      <!-- Liste des chapitres -->
+      <div id="chapter-list"></div>
+
+      <div class="row" style="margin-bottom:0">
+        <button id="btnExportChapters" class="btn-green" disabled>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          Exporter JSON
+        </button>
+        <button id="btnLoadJson" class="btn-ghost" title="Charger un fichier JSON existant">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/><path d="M12 3v12" transform="scale(1,-1) translate(0,-24)"/></svg>
+          Charger JSON
+        </button>
+      </div>
+      <!-- Input file caché pour le chargement JSON -->
+      <input type="file" id="inputLoadJson" accept=".json,application/json" style="display:none">
+      <div id="load-error" style="display:none;margin-top:6px;font-size:11px;color:#c62828;background:#fce8e6;border-radius:6px;padding:6px 10px;"></div>
+      <button id="btnExitChapter" class="btn-ghost-danger" style="margin-top:8px">
+        Quitter le mode chapitrage
+      </button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

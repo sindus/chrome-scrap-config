@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  # ── Lint ──────────────────────────────────────────────────────
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+
+  # ── Unit & Integration tests ──────────────────────────────────
+  test:
+    name: Unit & Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test -- --coverage
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: coverage/
+
+  # ── E2E tests ─────────────────────────────────────────────────
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+      - name: Install Xvfb
+        run: sudo apt-get install -y xvfb
+      - name: Run E2E tests (via xvfb-run)
+        # xvfb-run starts a virtual framebuffer and sets $DISPLAY automatically.
+        # Chrome extensions require a headed browser — headless:false + xvfb is the standard CI approach.
+        run: xvfb-run --auto-servernum -- npm run test:e2e
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
