@@ -182,4 +182,14 @@ describe('generateSelector', () => {
     expect(sel).toContain('body');
     document.body.removeChild(div);
   });
+
+  test('handles detached element with no parentElement', () => {
+    // Covers the `if (parent)` false branch in generateSelector
+    const div = document.createElement('div');
+    div.className = 'standalone';
+    // Not appended to DOM — parentElement is null
+    const sel = generateSelector(div);
+    expect(sel).toContain('div');
+    expect(sel).not.toContain('body');
+  });
 });

@@ -46,6 +46,15 @@ module.exports = [
       },
     },
   },
+  {
+    // popup.js gets the json-loader global injected by lib/json-loader.js
+    files: ['popup.js'],
+    languageOptions: {
+      globals: {
+        parseChaptersJson: 'readonly',
+      },
+    },
+  },
   // ── Node.js config files ──────────────────────────────────────
   {
     files: ['jest.config.js', 'playwright.config.js', 'eslint.config.js'],

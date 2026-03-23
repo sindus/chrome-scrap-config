@@ -291,22 +291,8 @@ inputLoadJson.addEventListener('change', () => {
   const reader = new FileReader();
   reader.onload = (e) => {
     try {
-      const data = JSON.parse(e.target.result);
-
-      // Accepte {chapters:[...]} ou directement [{page,path},...]
-      const loaded = Array.isArray(data) ? data : data.chapters;
-
-      if (!Array.isArray(loaded)) {
-        throw new Error('Format invalide : la clé "chapters" est absente ou n\'est pas un tableau.');
-      }
-
-      const valid = loaded.filter(
-        (ch) => typeof ch.page === 'string' && typeof ch.path === 'string',
-      );
-
-      if (valid.length === 0) {
-        throw new Error('Aucune entrée valide trouvée (chaque entrée doit avoir "page" et "path").');
-      }
+      // parseChaptersJson is loaded from lib/json-loader.js
+      const valid = parseChaptersJson(e.target.result);
 
       // Fusionne : les entrées du fichier en premier, puis celles déjà en session
       chapters = [...valid, ...chapters];
