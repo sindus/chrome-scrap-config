@@ -187,4 +187,40 @@ describe('Export payload', () => {
     expect(() => JSON.parse(json)).not.toThrow();
     expect(JSON.parse(json)).toEqual(payload);
   });
+
+  test('exclude key is omitted from simple-mode payload when array is empty', () => {
+    const config = { page: 'https://example.com', path: '#main', exclude: [] };
+    const payload = { page: config.page, path: config.path };
+    if (Array.isArray(config.exclude) && config.exclude.length > 0) {
+      payload.exclude = config.exclude;
+    }
+    expect(payload).not.toHaveProperty('exclude');
+  });
+
+  test('exclude key is omitted when scrapingConfig has no exclude field', () => {
+    const config = { page: 'https://example.com', path: '#main' };
+    const payload = { page: config.page, path: config.path };
+    if (Array.isArray(config.exclude) && config.exclude.length > 0) {
+      payload.exclude = config.exclude;
+    }
+    expect(payload).not.toHaveProperty('exclude');
+  });
+
+  test('exclude key is present in payload when array has entries', () => {
+    const config = { page: 'https://example.com', path: '#main', exclude: ['div.sp-wrapper', 'button.copy'] };
+    const payload = { page: config.page, path: config.path };
+    if (Array.isArray(config.exclude) && config.exclude.length > 0) {
+      payload.exclude = config.exclude;
+    }
+    expect(payload.exclude).toEqual(['div.sp-wrapper', 'button.copy']);
+  });
+
+  test('exported JSON with exclude is valid and parseable', () => {
+    const payload = { page: 'https://react.dev', path: 'main', exclude: ['div.sp-wrapper'] };
+    const json = JSON.stringify(payload, null, 2);
+    expect(() => JSON.parse(json)).not.toThrow();
+    const parsed = JSON.parse(json);
+    expect(parsed.exclude).toHaveLength(1);
+    expect(typeof parsed.exclude[0]).toBe('string');
+  });
 });

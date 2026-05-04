@@ -3,14 +3,18 @@ const modeSimple  = document.getElementById('mode-simple');
 const modeChapter = document.getElementById('mode-chapter');
 
 // Mode simple
-const btnSelect      = document.getElementById('btnSelect');
-const btnEnterChapter = document.getElementById('btnEnterChapter');
-const btnDownload    = document.getElementById('btnDownload');
-const btnClear       = document.getElementById('btnClear');
-const resultSection  = document.getElementById('result-section');
-const statusIdle     = document.getElementById('status-idle');
-const fieldPage      = document.getElementById('field-page');
-const fieldPath      = document.getElementById('field-path');
+const btnSelect          = document.getElementById('btnSelect');
+const btnEnterChapter    = document.getElementById('btnEnterChapter');
+const btnDownload        = document.getElementById('btnDownload');
+const btnClear           = document.getElementById('btnClear');
+const resultSection      = document.getElementById('result-section');
+const statusIdle         = document.getElementById('status-idle');
+const fieldPage          = document.getElementById('field-page');
+const fieldPath          = document.getElementById('field-path');
+const excludeList        = document.getElementById('exclude-list');
+const btnAddExclusion    = document.getElementById('btnAddExclusion');
+const inputExcludeManual = document.getElementById('inputExcludeManual');
+const btnExcludeManualAdd = document.getElementById('btnExcludeManualAdd');
 
 // Mode chapitrage
 const chapterBadge      = document.getElementById('chapter-badge');
@@ -77,10 +81,69 @@ function makeFieldEditable(el, storageKey) {
 makeFieldEditable(fieldPage, 'page');
 makeFieldEditable(fieldPath, 'path');
 
+function renderExcludeList(excludes) {
+  excludeList.innerHTML = '';
+  excludes.forEach((selector, idx) => {
+    const item = document.createElement('div');
+    item.className = 'exclude-item';
+
+    const selectorEl = document.createElement('div');
+    selectorEl.className = 'exclude-selector';
+    selectorEl.contentEditable = 'true';
+    selectorEl.spellcheck = false;
+    selectorEl.textContent = selector;
+
+    selectorEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); selectorEl.blur(); }
+      if (e.key === 'Escape') { selectorEl.textContent = selector; selectorEl.blur(); }
+    });
+
+    selectorEl.addEventListener('blur', () => {
+      const val = selectorEl.textContent.trim();
+      if (!val) { selectorEl.textContent = selector; return; }
+      chrome.storage.local.get('scrapingConfig', (data) => {
+        if (!data.scrapingConfig) { return; }
+        const updated = Array.isArray(data.scrapingConfig.exclude)
+          ? [...data.scrapingConfig.exclude]
+          : [];
+        updated[idx] = val;
+        data.scrapingConfig.exclude = updated;
+        chrome.storage.local.set({ scrapingConfig: data.scrapingConfig });
+      });
+    });
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'exclude-del';
+    delBtn.title = 'Supprimer';
+    delBtn.textContent = '×';
+    delBtn.addEventListener('click', () => {
+      chrome.storage.local.get('scrapingConfig', (data) => {
+        if (!data.scrapingConfig) { return; }
+        const updated = Array.isArray(data.scrapingConfig.exclude)
+          ? [...data.scrapingConfig.exclude]
+          : [];
+        updated.splice(idx, 1);
+        if (updated.length > 0) {
+          data.scrapingConfig.exclude = updated;
+        } else {
+          delete data.scrapingConfig.exclude;
+        }
+        chrome.storage.local.set({ scrapingConfig: data.scrapingConfig });
+        renderExcludeList(data.scrapingConfig.exclude || []);
+      });
+    });
+
+    item.appendChild(selectorEl);
+    item.appendChild(delBtn);
+    excludeList.appendChild(item);
+  });
+}
+
 function showConfig(config) {
   fieldPage.textContent = config.page;
   fieldPage.title       = config.page;
   fieldPath.textContent = config.path;
+  renderExcludeList(config.exclude || []);
   resultSection.style.display = 'block';
   statusIdle.style.display    = 'none';
 }
@@ -109,8 +172,36 @@ btnDownload.addEventListener('click', async () => {
   await sendMessage('clearHighlight');
   chrome.storage.local.get('scrapingConfig', (data) => {
     if (!data.scrapingConfig) {return;}
-    downloadJSON(data.scrapingConfig, 'scraping-config.json');
+    const payload = { page: data.scrapingConfig.page, path: data.scrapingConfig.path };
+    if (Array.isArray(data.scrapingConfig.exclude) && data.scrapingConfig.exclude.length > 0) {
+      payload.exclude = data.scrapingConfig.exclude;
+    }
+    downloadJSON(payload, 'scraping-config.json');
   });
+});
+
+btnAddExclusion.addEventListener('click', async () => {
+  await sendMessage('startExclusionSelection');
+  window.close();
+});
+
+btnExcludeManualAdd.addEventListener('click', () => {
+  const val = inputExcludeManual.value.trim();
+  if (!val) { return; }
+  chrome.storage.local.get('scrapingConfig', (data) => {
+    if (!data.scrapingConfig) { return; }
+    const exclude = Array.isArray(data.scrapingConfig.exclude) ? data.scrapingConfig.exclude : [];
+    if (!exclude.includes(val)) {
+      data.scrapingConfig.exclude = [...exclude, val];
+      chrome.storage.local.set({ scrapingConfig: data.scrapingConfig });
+      renderExcludeList(data.scrapingConfig.exclude);
+    }
+    inputExcludeManual.value = '';
+  });
+});
+
+inputExcludeManual.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); btnExcludeManualAdd.click(); }
 });
 
 btnClear.addEventListener('click', async () => {

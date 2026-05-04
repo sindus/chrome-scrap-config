@@ -99,6 +99,36 @@
       box-shadow: 0 0 0 2px rgba(26,115,232,0.15);
     }
 
+    /* ── Exclusion list ── */
+    .exclude-item { display: flex; align-items: center; gap: 6px; padding: 4px 0; }
+    .exclude-selector {
+      flex: 1; background: #fff4e5; border: 1px solid #ffe0b2; border-radius: 5px;
+      padding: 4px 8px; font-size: 11px; color: #e65100;
+      font-family: 'SFMono-Regular', Consolas, monospace; word-break: break-all;
+      cursor: text; outline: none; line-height: 1.4;
+    }
+    .exclude-selector[contenteditable]:focus {
+      border-color: #ff6f00; background: #fff;
+      box-shadow: 0 0 0 2px rgba(255,111,0,0.15);
+    }
+    .exclude-del {
+      flex-shrink: 0; width: 20px !important; height: 20px; padding: 0 !important;
+      border-radius: 50%; background: transparent; color: #bbb; font-size: 15px;
+      line-height: 1; border: none;
+    }
+    .exclude-del:hover { background: #fce8e6; color: #c62828; }
+    .exclude-manual-row { display: flex; gap: 6px; margin-bottom: 8px; }
+    #inputExcludeManual {
+      flex: 1; border: 1px solid #e8e8e8; border-radius: 6px;
+      padding: 6px 10px; font-size: 11px;
+      font-family: 'SFMono-Regular', Consolas, monospace;
+      outline: none; background: #fafafa;
+    }
+    #inputExcludeManual:focus {
+      border-color: #ff6f00; background: #fff;
+      box-shadow: 0 0 0 2px rgba(255,111,0,0.15);
+    }
+
     .row { display: flex; gap: 8px; }
     .row button { flex: 1; }
     .btn-icon { flex: 0 0 auto !important; width: auto !important; padding: 9px 12px !important; }
@@ -226,6 +256,20 @@
         <div class="field page-url" id="field-page" contenteditable="true" spellcheck="false"></div>
         <div class="label">Sélecteur CSS</div>
         <div class="field" id="field-path" contenteditable="true" spellcheck="false"></div>
+
+        <div id="exclude-section">
+          <div class="label">Exclusions</div>
+          <div id="exclude-list"></div>
+          <div class="exclude-manual-row">
+            <input type="text" id="inputExcludeManual" placeholder="Sélecteur CSS…" spellcheck="false">
+            <button id="btnExcludeManualAdd" class="btn-icon btn-ghost" title="Ajouter">+</button>
+          </div>
+          <button id="btnAddExclusion" class="btn-ghost" style="margin-bottom:10px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            Ajouter une exclusion
+          </button>
+        </div>
+
         <div class="row">
           <button id="btnDownload" class="btn-green">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>

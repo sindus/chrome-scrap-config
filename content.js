@@ -3,18 +3,18 @@
 
 // Guard against double-injection
 if (window.__scrapingConfigInjected) {
-  chrome.runtime.onMessage.addListener(handleMessage);  
+  chrome.runtime.onMessage.addListener(handleMessage);
 } else {
   window.__scrapingConfigInjected = true;
 
-  let isSelecting = false;
+  let selectionMode = null; // null | 'main' | 'exclude'
   let highlightedElement = null;
   let selectedElement = null;
   let banner = null;
 
   // ── Banner ────────────────────────────────────────────────────
 
-  function createBanner() {
+  function createBanner(text) {
     banner = document.createElement('div');
     banner.id = '__scraping_banner__';
     banner.style.cssText = `
@@ -31,7 +31,7 @@ if (window.__scrapingConfigInjected) {
       letter-spacing: 0.3px !important;
       box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
     `;
-    banner.textContent = '🎯 Cliquez sur un élément pour le sélectionner   |   Échap pour annuler';
+    banner.textContent = text;
     document.body.appendChild(banner);
   }
 
@@ -58,7 +58,8 @@ if (window.__scrapingConfigInjected) {
     if (el && el !== document.body && el !== document.documentElement && el !== banner) {
       el.__origOutline = el.style.outline;
       el.__origOutlineOffset = el.style.outlineOffset;
-      el.style.setProperty('outline', '2px solid #e53935', 'important');
+      const color = selectionMode === 'exclude' ? '#ff6f00' : '#e53935';
+      el.style.setProperty('outline', `2px solid ${color}`, 'important');
       el.style.setProperty('outline-offset', '1px', 'important');
       highlightedElement = el;
     }
@@ -77,13 +78,13 @@ if (window.__scrapingConfigInjected) {
   // ── Event handlers ────────────────────────────────────────────
 
   function onMouseOver(e) {
-    if (!isSelecting || e.target === banner) {return;}
+    if (selectionMode === null || e.target === banner) {return;}
     const block = findBlockAncestor(e.target); // from lib/selector.js
     if (block) {highlightElement(block);}
   }
 
   function onClick(e) {
-    if (!isSelecting || e.target === banner) {return;}
+    if (selectionMode === null || e.target === banner) {return;}
     e.preventDefault();
     e.stopPropagation();
     e.stopImmediatePropagation();
@@ -92,15 +93,26 @@ if (window.__scrapingConfigInjected) {
     if (!block) {return;}
 
     const selector = generateSelector(block); // from lib/selector.js
-    const page = window.location.href;
 
-    stopSelection();
+    if (selectionMode === 'main') {
+      const page = window.location.href;
+      stopSelection();
+      selectedElement = block;
+      block.style.setProperty('outline', '2px solid #e53935', 'important');
+      block.style.setProperty('outline-offset', '1px', 'important');
+      chrome.storage.local.set({ scrapingConfig: { page, path: selector } });
 
-    selectedElement = block;
-    block.style.setProperty('outline', '2px solid #e53935', 'important');
-    block.style.setProperty('outline-offset', '1px', 'important');
-
-    chrome.storage.local.set({ scrapingConfig: { page, path: selector } });
+    } else if (selectionMode === 'exclude') {
+      stopSelection();
+      chrome.storage.local.get('scrapingConfig', (data) => {
+        const config = data.scrapingConfig || {};
+        const existing = Array.isArray(config.exclude) ? config.exclude : [];
+        if (!existing.includes(selector)) {
+          config.exclude = [...existing, selector];
+          chrome.storage.local.set({ scrapingConfig: config });
+        }
+      });
+    }
   }
 
   function onKeyDown(e) {
@@ -109,18 +121,21 @@ if (window.__scrapingConfigInjected) {
 
   // ── Selection lifecycle ───────────────────────────────────────
 
-  function startSelection() {
-    if (isSelecting) {return;}
-    isSelecting = true;
-    createBanner();
+  function startSelectionMode(mode) {
+    if (selectionMode !== null) {return;}
+    selectionMode = mode;
+    const text = mode === 'exclude'
+      ? '🚫 Cliquez sur un élément à exclure   |   Échap pour annuler'
+      : '🎯 Cliquez sur un élément pour le sélectionner   |   Échap pour annuler';
+    createBanner(text);
     document.addEventListener('mouseover', onMouseOver, true);
     document.addEventListener('click', onClick, true);
     document.addEventListener('keydown', onKeyDown, true);
   }
 
   function stopSelection() {
-    if (!isSelecting) {return;}
-    isSelecting = false;
+    if (selectionMode === null) {return;}
+    selectionMode = null;
     removeHighlight();
     removeBanner();
     document.removeEventListener('mouseover', onMouseOver, true);
@@ -133,7 +148,9 @@ if (window.__scrapingConfigInjected) {
   function handleMessage(message) {
     if (message.action === 'startSelection') {
       clearSelected();
-      startSelection();
+      startSelectionMode('main');
+    } else if (message.action === 'startExclusionSelection') {
+      startSelectionMode('exclude'); // garde le contour rouge de l'élément principal
     } else if (message.action === 'clearHighlight') {
       clearSelected();
     }

@@ -156,3 +156,51 @@ describe('Inline edit — chapter mode', () => {
     expect(store.chaptersData.chapters[0].path).toBe('#hero');
   });
 });
+
+// ── Inline edit — exclusion selectors ────────────────────────────────────────
+
+/**
+ * Simulates the blur handler for exclusion items in renderExcludeList() (popup.js).
+ */
+function saveExcludeField(config, idx, newValue) {
+  const val = newValue.trim();
+  if (!val) { return; }
+  const updated = Array.isArray(config.exclude) ? [...config.exclude] : [];
+  updated[idx] = val;
+  config.exclude = updated;
+  chromeMock.storage.local.set({ scrapingConfig: config });
+}
+
+describe('Inline edit — exclusion selectors', () => {
+  test('editing an exclude selector saves the updated value at the correct index', () => {
+    const config = { page: 'https://example.com', path: 'main', exclude: ['div.old', 'nav.bar'] };
+    saveExcludeField(config, 0, 'div.new');
+    expect(store.scrapingConfig.exclude[0]).toBe('div.new');
+    expect(store.scrapingConfig.exclude[1]).toBe('nav.bar'); // untouched
+  });
+
+  test('editing the second exclude does not affect the first', () => {
+    const config = { page: 'https://example.com', path: 'main', exclude: ['div.a', 'div.b'] };
+    saveExcludeField(config, 1, 'div.b-new');
+    expect(store.scrapingConfig.exclude[0]).toBe('div.a');
+    expect(store.scrapingConfig.exclude[1]).toBe('div.b-new');
+  });
+
+  test('empty value after trim does not trigger a save', () => {
+    const config = { page: 'https://example.com', path: 'main', exclude: ['div.ok'] };
+    saveExcludeField(config, 0, '   ');
+    expect(chromeMock.storage.local.set).not.toHaveBeenCalled();
+  });
+
+  test('empty string does not trigger a save', () => {
+    const config = { page: 'https://example.com', path: 'main', exclude: ['div.ok'] };
+    saveExcludeField(config, 0, '');
+    expect(chromeMock.storage.local.set).not.toHaveBeenCalled();
+  });
+
+  test('value is trimmed before saving', () => {
+    const config = { page: 'https://example.com', path: 'main', exclude: ['div.old'] };
+    saveExcludeField(config, 0, '  #hero  ');
+    expect(store.scrapingConfig.exclude[0]).toBe('#hero');
+  });
+});
