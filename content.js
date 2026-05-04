@@ -8,6 +8,7 @@ if (window.__scrapingConfigInjected) {
   window.__scrapingConfigInjected = true;
 
   let selectionMode = null; // null | 'main' | 'exclude'
+  let excludeTarget = null; // null (mode simple) | number (index chapitre)
   let highlightedElement = null;
   let selectedElement = null;
   let banner = null;
@@ -103,15 +104,23 @@ if (window.__scrapingConfigInjected) {
       chrome.storage.local.set({ scrapingConfig: { page, path: selector } });
 
     } else if (selectionMode === 'exclude') {
+      const target = excludeTarget; // capture avant stopSelection (qui réinitialise excludeTarget)
       stopSelection();
-      chrome.storage.local.get('scrapingConfig', (data) => {
-        const config = data.scrapingConfig || {};
-        const existing = Array.isArray(config.exclude) ? config.exclude : [];
-        if (!existing.includes(selector)) {
-          config.exclude = [...existing, selector];
-          chrome.storage.local.set({ scrapingConfig: config });
-        }
-      });
+
+      if (target !== null) {
+        // Mode chapitrage : stockage dédié pour associer l'exclusion au bon chapitre
+        chrome.storage.local.set({ chapterExclusionCapture: { chapterIdx: target, selector } });
+      } else {
+        // Mode simple : ajout dans scrapingConfig.exclude
+        chrome.storage.local.get('scrapingConfig', (data) => {
+          const config = data.scrapingConfig || {};
+          const existing = Array.isArray(config.exclude) ? config.exclude : [];
+          if (!existing.includes(selector)) {
+            config.exclude = [...existing, selector];
+            chrome.storage.local.set({ scrapingConfig: config });
+          }
+        });
+      }
     }
   }
 
@@ -121,9 +130,10 @@ if (window.__scrapingConfigInjected) {
 
   // ── Selection lifecycle ───────────────────────────────────────
 
-  function startSelectionMode(mode) {
+  function startSelectionMode(mode, chapterIdx) {
     if (selectionMode !== null) {return;}
     selectionMode = mode;
+    excludeTarget = (chapterIdx !== undefined && chapterIdx !== null) ? chapterIdx : null;
     const text = mode === 'exclude'
       ? '🚫 Cliquez sur un élément à exclure   |   Échap pour annuler'
       : '🎯 Cliquez sur un élément pour le sélectionner   |   Échap pour annuler';
@@ -136,6 +146,7 @@ if (window.__scrapingConfigInjected) {
   function stopSelection() {
     if (selectionMode === null) {return;}
     selectionMode = null;
+    excludeTarget = null;
     removeHighlight();
     removeBanner();
     document.removeEventListener('mouseover', onMouseOver, true);
@@ -150,7 +161,7 @@ if (window.__scrapingConfigInjected) {
       clearSelected();
       startSelectionMode('main');
     } else if (message.action === 'startExclusionSelection') {
-      startSelectionMode('exclude'); // garde le contour rouge de l'élément principal
+      startSelectionMode('exclude', message.chapterIdx);
     } else if (message.action === 'clearHighlight') {
       clearSelected();
     }

@@ -38,9 +38,9 @@ let dragSrcIdx = null;
 
 // ── Utilitaires storage ─────────────────────────────────────────
 function loadChapterState(cb) {
-  chrome.storage.local.get(['chaptersData', 'scrapingConfig'], (data) => {
+  chrome.storage.local.get(['chaptersData', 'scrapingConfig', 'chapterExclusionCapture'], (data) => {
     const cd = data.chaptersData || { active: false, chapters: [], lastAdded: null };
-    cb(cd, data.scrapingConfig || null);
+    cb(cd, data.scrapingConfig || null, data.chapterExclusionCapture || null);
   });
 }
 
@@ -153,13 +153,14 @@ function hideConfig() {
   statusIdle.style.display    = 'block';
 }
 
-async function sendMessage(action) {
+async function sendMessage(action, extraData) {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   // Injection de secours (page ouverte avant l'installation)
   try {
     await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['lib/selector.js', 'content.js'] });
   } catch (_) {}
-  chrome.tabs.sendMessage(tab.id, { action }).catch(() => {});
+  const msg = extraData ? { action, ...extraData } : { action };
+  chrome.tabs.sendMessage(tab.id, msg).catch(() => {});
   return tab.id;
 }
 
@@ -256,7 +257,6 @@ function renderChapterList() {
       el.contentEditable = 'true';
       el.spellcheck = false;
 
-      // Enter confirme, Escape annule
       el.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
         if (e.key === 'Escape') {
@@ -268,7 +268,6 @@ function renderChapterList() {
       el.addEventListener('blur', () => {
         const val = el.textContent.trim();
         if (!val) {
-          // Restaure la valeur précédente si vide
           el.textContent = el === urlEl ? chapters[idx].page : chapters[idx].path;
           return;
         }
@@ -277,9 +276,108 @@ function renderChapterList() {
         saveChapterState();
       });
 
-      // Empêche le drag de se déclencher quand on édite
       el.addEventListener('mousedown', (e) => e.stopPropagation());
     });
+
+    // ── Exclusions du chapitre ────────────────────────────────
+    const chapterInfo = item.querySelector('.chapter-info');
+    const excludesDiv = document.createElement('div');
+    excludesDiv.className = 'chapter-excludes';
+
+    const chExcludes = Array.isArray(ch.exclude) ? ch.exclude : [];
+
+    chExcludes.forEach((sel, eIdx) => {
+      const eItem = document.createElement('div');
+      eItem.className = 'exclude-item';
+
+      const eSel = document.createElement('div');
+      eSel.className = 'exclude-selector';
+      eSel.contentEditable = 'true';
+      eSel.spellcheck = false;
+      eSel.textContent = sel;
+
+      eSel.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); eSel.blur(); }
+        if (e.key === 'Escape') { eSel.textContent = sel; eSel.blur(); }
+      });
+      eSel.addEventListener('blur', () => {
+        const val = eSel.textContent.trim();
+        if (!val) { eSel.textContent = sel; return; }
+        const excl = Array.isArray(chapters[idx].exclude) ? [...chapters[idx].exclude] : [];
+        excl[eIdx] = val;
+        chapters[idx].exclude = excl;
+        saveChapterState();
+      });
+      eSel.addEventListener('mousedown', (e) => e.stopPropagation());
+
+      const eDel = document.createElement('button');
+      eDel.className = 'exclude-del';
+      eDel.title = 'Supprimer';
+      eDel.textContent = '×';
+      eDel.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const excl = Array.isArray(chapters[idx].exclude) ? [...chapters[idx].exclude] : [];
+        excl.splice(eIdx, 1);
+        if (excl.length > 0) { chapters[idx].exclude = excl; }
+        else { delete chapters[idx].exclude; }
+        saveChapterState();
+        renderChapterList();
+      });
+
+      eItem.append(eSel, eDel);
+      excludesDiv.appendChild(eItem);
+    });
+
+    // Saisie d'exclusion (manuelle + visuelle)
+    const actionsRow = document.createElement('div');
+    actionsRow.className = 'chapter-exclude-actions';
+
+    const manualInput = document.createElement('input');
+    manualInput.type = 'text';
+    manualInput.className = 'chapter-exclude-input';
+    manualInput.placeholder = 'Sélecteur CSS…';
+    manualInput.spellcheck = false;
+
+    const addManualBtn = document.createElement('button');
+    addManualBtn.className = 'btn-icon btn-ghost chapter-exclude-manual-btn';
+    addManualBtn.title = 'Ajouter';
+    addManualBtn.textContent = '+';
+
+    const addVisualBtn = document.createElement('button');
+    addVisualBtn.className = 'btn-icon btn-ghost chapter-exclude-visual-btn';
+    addVisualBtn.title = 'Sélectionner sur la page';
+    addVisualBtn.textContent = '🚫';
+
+    addManualBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const val = manualInput.value.trim();
+      if (!val) { return; }
+      const existing = Array.isArray(chapters[idx].exclude) ? chapters[idx].exclude : [];
+      if (!existing.includes(val)) {
+        chapters[idx].exclude = [...existing, val];
+        saveChapterState();
+        renderChapterList();
+      }
+      manualInput.value = '';
+    });
+
+    manualInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); addManualBtn.click(); }
+    });
+
+    addVisualBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await sendMessage('startExclusionSelection', { chapterIdx: idx });
+      window.close();
+    });
+
+    [manualInput, addManualBtn, addVisualBtn].forEach((el) => {
+      el.addEventListener('mousedown', (e) => e.stopPropagation());
+    });
+
+    actionsRow.append(manualInput, addManualBtn, addVisualBtn);
+    excludesDiv.appendChild(actionsRow);
+    chapterInfo.appendChild(excludesDiv);
 
     // Drag & drop
     item.addEventListener('dragstart', (e) => {
@@ -365,7 +463,14 @@ btnDiscardPending.addEventListener('click', () => {
 
 btnExportChapters.addEventListener('click', () => {
   if (chapters.length === 0) {return;}
-  downloadJSON({ chapters }, 'chapitrage.json');
+  const exportChapters = chapters.map((ch) => {
+    const entry = { page: ch.page, path: ch.path };
+    if (Array.isArray(ch.exclude) && ch.exclude.length > 0) {
+      entry.exclude = ch.exclude;
+    }
+    return entry;
+  });
+  downloadJSON({ chapters: exportChapters }, 'chapitrage.json');
 });
 
 // ── Chargement d'un JSON existant ───────────────────────────────
@@ -437,10 +542,24 @@ function downloadJSON(data, filename) {
 }
 
 // ── Init ────────────────────────────────────────────────────────
-loadChapterState((cd, config) => {
+loadChapterState((cd, config, exclusionCapture) => {
   if (cd.active) {
     chapters  = cd.chapters || [];
     lastAdded = cd.lastAdded || null;
+
+    // Consomme l'exclusion capturée par sélection visuelle en mode chapitrage
+    if (exclusionCapture) {
+      const { chapterIdx, selector } = exclusionCapture;
+      if (chapterIdx >= 0 && chapterIdx < chapters.length) {
+        const existing = Array.isArray(chapters[chapterIdx].exclude) ? chapters[chapterIdx].exclude : [];
+        if (!existing.includes(selector)) {
+          chapters[chapterIdx].exclude = [...existing, selector];
+          saveChapterState();
+        }
+      }
+      chrome.storage.local.remove('chapterExclusionCapture');
+    }
+
     showChapterMode();
     renderChapterList();
 

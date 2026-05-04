@@ -228,6 +228,25 @@
       font-size: 15px; line-height: 1; border: none;
     }
     .chapter-del:hover { background: #fce8e6; color: #c62828; }
+
+    /* ── Exclusions par chapitre ── */
+    .chapter-excludes { margin-top: 5px; }
+    .chapter-excludes .exclude-selector { font-size: 10px; padding: 2px 6px; }
+    .chapter-exclude-actions { display: flex; gap: 4px; margin-top: 4px; }
+    .chapter-exclude-input {
+      flex: 1; border: 1px solid #e8e8e8; border-radius: 4px;
+      padding: 3px 6px; font-size: 10px;
+      font-family: 'SFMono-Regular', Consolas, monospace;
+      outline: none; background: #fafafa; min-width: 0;
+    }
+    .chapter-exclude-input:focus { border-color: #ff6f00; background: #fff; }
+    .chapter-exclude-manual-btn,
+    .chapter-exclude-visual-btn {
+      flex-shrink: 0; width: auto !important; padding: 2px 7px !important;
+      font-size: 11px; border-radius: 4px;
+    }
+    .chapter-exclude-visual-btn { background: #fff4e5; color: #e65100; }
+    .chapter-exclude-visual-btn:hover { background: #ffe0b2; }
   </style>
 </head>
 <body>
